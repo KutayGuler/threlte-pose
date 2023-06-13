@@ -66,12 +66,18 @@
   $: console.log($webcam);
 </script>
 
-<div id="video-sec">
-  <h1 id="loading-text">Loading...</h1>
-</div>
+<h1 id="loading-text">Loading...</h1>
+<main id="video-sec">
+  {#if mounted && $webcam}
+    <Canvas size={{ width: 800, height: 600 }}>
+      <Scene />
+    </Canvas>
+  {/if}
+</main>
 
-{#if mounted && $webcam}
-  <Canvas size={{ width: 800, height: 600 }}>
-    <Scene />
-  </Canvas>
-{/if}
+<style>
+  main {
+    display: flex;
+    flex-direction: row;
+  }
+</style>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { GLTF, useGltfAnimations } from "@threlte/extras";
-  import { useFrame } from "@threlte/core";
+  import { useFrame, T } from "@threlte/core";
   import { webcam } from "../store";
   import {
     SupportedModels,
@@ -10,10 +10,11 @@
     type Pose,
   } from "@tensorflow-models/pose-detection";
   import * as tf from "@tensorflow/tfjs";
-  import type { Bone, Object3D, SkinnedMesh } from "three";
+  // @ts-expect-error
+  import { Vector3, type Bone, type Object3D, type SkinnedMesh } from "three";
 
   const { gltf } = useGltfAnimations();
-  const MULTIPLIER = -50;
+  const MULTIPLIER = -0.05;
 
   // TODO: get rotation
 
@@ -53,6 +54,8 @@
     setTimeout(() => loadingText.classList.toggle("transparent"), 3000);
   }
 
+  const THRESHOLD = 0.9;
+
   async function get3DKeypoints() {
     if (!detector) return undefined;
 
@@ -64,14 +67,16 @@
     //poses = await detector.estimatePosesGPU(webCam);
 
     let map = new Map();
-    console.log(poses[0]);
 
-    if (poses[0] && poses[0].keypoints3D) {
-      for (let { x, y, z, name } of poses[0].keypoints3D) {
+    if (poses[0] && poses[0].keypoints) {
+      console.log(poses[0]);
+      for (let { x, y, z, name, score } of poses[0].keypoints) {
+        if (score < THRESHOLD) continue;
         map.set(name, {
           x: x * MULTIPLIER,
           y: y * MULTIPLIER,
-          z: (z || 1) * MULTIPLIER,
+          // z: (z || 1) * MULTIPLIER,
+          z: 1,
         });
       }
     }
@@ -80,9 +85,27 @@
   }
 
   const MIXAMO_TO_BLAZE = {
+    // head
+    mixamorigRightEye: "right_eye",
+    mixamorigLeftEye: "left_eye",
+    mixamorigHead: "nose",
+
+    // chest
     mixamorigRightShoulder: "right_shoulder",
     mixamorigLeftShoulder: "left_shoulder",
-    mixamorigHead: "nose",
+    mixamorigLeftArm: "left_elbow",
+    mixamorigRightArm: "right_elbow",
+
+    //hands
+    mixamorigLeftHand: "left_wrist",
+    mixamorigRightHand: "right_wrist",
+    mixamoRigLeftHandIndex1: "left_index",
+    mixamoRigLeftHandThumb1: "left_thumb",
+    mixamoRigRightHandIndex1: "right_index",
+    mixamoRigRightHandThumb1: "right_thumb",
+
+    mixamorigRightUpLeg: "right_hip",
+    mixamorigLeftUpLeg: "left_hip",
   };
 
   function makeObjectAndChildrenWritable(
@@ -119,6 +142,7 @@
   // not sure about making this function async
   const { start } = useFrame(async (ctx) => {
     const keypoints = await get3DKeypoints();
+
     if ($gltf && keypoints) {
       updateObjectAndChildren($gltf.scene.children[0], keypoints);
     }
